@@ -1,0 +1,119 @@
+{
+  "data_quality": {
+    "order_lines": 121253,
+    "lines_without_order_header": 0,
+    "missing_ship_date": 2113,
+    "negative_amounts": 0,
+    "duplicate_line_keys": 0
+  },
+  "revenue_total": 109809272.0,
+  "profit_total": 12551288.0,
+  "margin_pct": 11.4,
+  "orders": 31455,
+  "revenue_by_channel": {
+    "Internet": 29358678.0,
+    "Reseller": 80450594.0
+  },
+  "margin_by_channel_pct": {
+    "Internet": 41.1,
+    "Reseller": 0.6
+  },
+  "internet_customers": 18484,
+  "silhouette_by_k": {
+    "3": 0.409,
+    "4": 0.422,
+    "5": 0.423,
+    "6": 0.463
+  },
+  "segments": [
+    {
+      "Segment": "Champions",
+      "Customers": 5568,
+      "AvgRecencyDays": 153.8,
+      "AvgOrders": 2.4,
+      "AvgRevenue": 4034.8,
+      "TotalRevenue": 22465526.3,
+      "RevenueShare": 0.7652,
+      "CustomerShare": 0.3012
+    },
+    {
+      "Segment": "Lapsed Big Spenders",
+      "Customers": 3713,
+      "AvgRecencyDays": 263.7,
+      "AvgOrders": 1.0,
+      "AvgRevenue": 1568.1,
+      "TotalRevenue": 5822428.1,
+      "RevenueShare": 0.1983,
+      "CustomerShare": 0.2009
+    },
+    {
+      "Segment": "Low-Value Occasional",
+      "Customers": 6776,
+      "AvgRecencyDays": 199.4,
+      "AvgOrders": 1.1,
+      "AvgRevenue": 52.3,
+      "TotalRevenue": 354276.7,
+      "RevenueShare": 0.0121,
+      "CustomerShare": 0.3666
+    },
+    {
+      "Segment": "New Customers",
+      "Customers": 2427,
+      "AvgRecencyDays": 25.0,
+      "AvgOrders": 1.4,
+      "AvgRevenue": 295.2,
+      "TotalRevenue": 716446.1,
+      "RevenueShare": 0.0244,
+      "CustomerShare": 0.1313
+    }
+  ],
+  "forecast_backtest_mape_pct": 12.0,
+  "naive_same_month_last_year_mape_pct": 40.1,
+  "forecast_jun_dec_2020_total": 36695485.0,
+  "forecast_monthly": {
+    "2020-06": 4185597.0,
+    "2020-07": 4913756.0,
+    "2020-08": 5786252.0,
+    "2020-09": 5721752.0,
+    "2020-10": 4582178.0,
+    "2020-11": 6422933.0,
+    "2020-12": 5083017.0
+  },
+  "monthly_actual": {
+    "2017-07": 1423357.0,
+    "2017-08": 2057903.0,
+    "2017-09": 2523948.0,
+    "2017-10": 561682.0,
+    "2017-11": 4764921.0,
+    "2017-12": 596747.0,
+    "2018-01": 1327675.0,
+    "2018-02": 3936464.0,
+    "2018-03": 700873.0,
+    "2018-04": 1519276.0,
+    "2018-05": 2960378.0,
+    "2018-06": 1487671.0,
+    "2018-07": 2939691.0,
+    "2018-08": 3964802.0,
+    "2018-09": 3287606.0,
+    "2018-10": 2157288.0,
+    "2018-11": 3611093.0,
+    "2018-12": 2624079.0,
+    "2019-01": 1847692.0,
+    "2019-02": 2829362.0,
+    "2019-03": 2092434.0,
+    "2019-04": 2405971.0,
+    "2019-05": 3459444.0,
+    "2019-06": 2850650.0,
+    "2019-07": 3513064.0,
+    "2019-08": 5247165.0,
+    "2019-09": 5104088.0,
+    "2019-10": 3542149.0,
+    "2019-11": 5151896.0,
+    "2019-12": 4851193.0,
+    "2020-01": 3235187.0,
+    "2020-02": 4070045.0,
+    "2020-03": 4429832.0,
+    "2020-04": 4002614.0,
+    "2020-05": 5265796.0
+  }
+}

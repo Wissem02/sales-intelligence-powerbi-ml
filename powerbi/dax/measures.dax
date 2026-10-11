@@ -1,0 +1,108 @@
+// =====================================================================
+// Sales Intelligence - DAX measures
+// Create a table named "_Measures" (Home > Enter data > empty table),
+// then add each measure below to it (Modeling > New measure).
+// Fiscal year runs July to June, as in dim_date[Fiscal Year].
+// =====================================================================
+
+// ---------- Core KPIs ----------
+Revenue = SUM ( fact_sales[SalesAmount] )
+
+Total Cost = SUM ( fact_sales[TotalCost] )
+
+Profit = SUM ( fact_sales[Profit] )
+
+Margin % = DIVIDE ( [Profit], [Revenue] )
+
+Orders = DISTINCTCOUNT ( fact_sales[SalesOrder] )
+
+Units Sold = SUM ( fact_sales[Quantity] )
+
+Avg Order Value = DIVIDE ( [Revenue], [Orders] )
+
+Active Customers =
+CALCULATE (
+    DISTINCTCOUNT ( fact_sales[CustomerKey] ),
+    fact_sales[CustomerKey] <> -1
+)
+
+// ---------- Time intelligence (fiscal year ends 30 June) ----------
+Revenue FYTD = TOTALYTD ( [Revenue], dim_date[Date], "06-30" )
+
+Revenue PY = CALCULATE ( [Revenue], SAMEPERIODLASTYEAR ( dim_date[Date] ) )
+
+Revenue YoY % = DIVIDE ( [Revenue] - [Revenue PY], [Revenue PY] )
+
+Profit PY = CALCULATE ( [Profit], SAMEPERIODLASTYEAR ( dim_date[Date] ) )
+
+Revenue 3M Rolling =
+CALCULATE (
+    [Revenue],
+    DATESINPERIOD ( dim_date[Date], MAX ( dim_date[Date] ), -3, MONTH )
+)
+
+// ---------- Ranking & mix ----------
+Category Share % =
+DIVIDE ( [Revenue], CALCULATE ( [Revenue], ALL ( dim_product[Category] ) ) )
+
+Product Rank =
+RANKX ( ALL ( dim_product[Product] ), [Revenue], , DESC, DENSE )
+
+Top 10 Products Revenue =
+CALCULATE (
+    [Revenue],
+    TOPN ( 10, ALL ( dim_product[Product] ), [Revenue], DESC )
+)
+
+// Flags loss-making combinations (used for conditional formatting)
+Margin Status =
+SWITCH (
+    TRUE (),
+    [Margin %] < 0, "Loss",
+    [Margin %] < 0.10, "Low",
+    "Healthy"
+)
+
+// ---------- ML: customer segments (from dim_customer[Segment]) ----------
+Segment Customers =
+CALCULATE ( COUNTROWS ( dim_customer ), dim_customer[Segment] <> "No Internet orders" )
+
+Segment Revenue Share % =
+DIVIDE (
+    [Revenue],
+    CALCULATE ( [Revenue], ALL ( dim_customer[Segment] ), fact_sales[Channel] = "Internet" )
+)
+
+Avg Revenue per Customer = DIVIDE ( [Revenue], [Active Customers] )
+
+Avg Recency (days) = AVERAGE ( dim_customer[RecencyDays] )
+
+// ---------- ML: forecast (from fact_forecast) ----------
+Actual (monthly) = SUM ( fact_forecast[Actual] )
+
+Forecast (monthly) = SUM ( fact_forecast[Forecast] )
+
+Forecast Lower 80 = SUM ( fact_forecast[Lower80] )
+
+Forecast Upper 80 = SUM ( fact_forecast[Upper80] )
+
+Forecast Jun-Dec 2020 =
+CALCULATE ( [Forecast (monthly)], fact_forecast[Type] = "Forecast" )
+
+// Backtest accuracy: mean absolute percentage error on Jan-May 2020
+Backtest MAPE % =
+VAR BacktestMonths =
+    FILTER ( ALL ( fact_forecast ), fact_forecast[Type] = "Backtest" )
+RETURN
+    AVERAGEX (
+        BacktestMonths,
+        VAR m = fact_forecast[Month]
+        VAR actual =
+            CALCULATE (
+                SUM ( fact_forecast[Actual] ),
+                ALL ( fact_forecast ),
+                fact_forecast[Month] = m,
+                fact_forecast[Type] = "Actual"
+            )
+        RETURN ABS ( fact_forecast[Forecast] - actual ) / actual
+    )

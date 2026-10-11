@@ -1,0 +1,442 @@
+<title>AdventureWorks Sales Intelligence</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: report header + page tabs + slicer bar, then a 12-column tile canvas per page */
+:root{
+  --bg:#eef1f5; --tile:#ffffff; --ink:#111827; --ink-2:#4b5563; --ink-3:#6b7280; --rule:#dde2ea; --grid:#edf0f4;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s1-soft:#9fc3ee;
+  --good:#1a9a6c; --warn:#c98500; --bad:#d23f3f; --good-bg:#e3f5ee; --warn-bg:#fdf3dc; --bad-bg:#fbe5e5;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1117; --tile:#161b22; --ink:#eef1f5; --ink-2:#b4bcc8; --ink-3:#8b95a3; --rule:#2a313c; --grid:#222a35;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s1-soft:#2d4f78;
+  --good:#3cc28f; --warn:#e3a72f; --bad:#ef6b6b; --good-bg:#14322a; --warn-bg:#3a2e12; --bad-bg:#3d1c1c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1117; --tile:#161b22; --ink:#eef1f5; --ink-2:#b4bcc8; --ink-3:#8b95a3; --rule:#2a313c; --grid:#222a35;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s1-soft:#2d4f78;
+  --good:#3cc28f; --warn:#e3a72f; --bad:#ef6b6b; --good-bg:#14322a; --warn-bg:#3a2e12; --bad-bg:#3d1c1c; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--body)}
+.shell{max-width:1440px;margin:0 auto;padding-inline:20px;padding-block:18px 40px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:600px){.shell{padding-inline:16px}}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+header h1{font:700 24px/1.1 var(--display);margin:0;letter-spacing:-.01em}
+header p{margin:4px 0 0;color:var(--ink-3);font-size:13px}
+.src{font:12px var(--mono);color:var(--ink-3);text-align:right}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--rule);overflow-x:auto}
+nav button{font:600 13.5px var(--body);color:var(--ink-2);background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--s1)}
+nav button:hover{color:var(--ink)}
+nav .ml{font:500 10px var(--mono);color:var(--s2);margin-left:6px;vertical-align:2px}
+.slicers{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.slicer{display:flex;align-items:center;gap:8px}
+.slicer>span{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.seg{display:flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden;background:var(--tile)}
+.seg button{font:500 13px var(--body);border:0;background:none;color:var(--ink-2);padding:6px 12px;cursor:pointer;border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--s1);color:#fff}
+.note-filter{font-size:12px;color:var(--ink-3)}
+:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+
+.page{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.tile{background:var(--tile);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.tile h2{font:600 13.5px var(--body);margin:0;color:var(--ink)}
+.tile .sub{font-size:12px;color:var(--ink-3);margin-top:-6px}
+.span3{grid-column:span 3}.span4{grid-column:span 4}.span5{grid-column:span 5}.span6{grid-column:span 6}.span7{grid-column:span 7}.span8{grid-column:span 8}.span12{grid-column:span 12}
+@media (max-width:1000px){.span3{grid-column:span 6}.span4,.span5,.span6,.span7,.span8{grid-column:span 12}}
+@media (max-width:560px){.span3{grid-column:span 12}}
+.kpis{grid-column:span 12;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--tile);border:1px solid var(--rule);border-radius:8px;padding:12px 16px}
+.kpi .l{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.kpi .v{font:700 26px/1.2 var(--display);font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .d{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.up{color:var(--good)}.down{color:var(--bad)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--body);fill:var(--ink-3);font-size:11px}
+svg .val{fill:var(--ink);font-weight:600}
+svg .gridl{stroke:var(--grid)}
+svg .axisl{stroke:var(--rule)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.callout{border-left:3px solid var(--bad);background:var(--bad-bg);border-radius:0 6px 6px 0;padding:10px 12px;font-size:13.5px}
+.callout.info{border-left-color:var(--s1);background:var(--grid)}
+.callout b{color:var(--ink)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);text-align:right;padding:6px 8px;border-bottom:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px 8px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+tr.grp td{font-weight:600;background:var(--grid)}
+tr.cat td:first-child{padding-left:18px}
+tr.sc td:first-child{padding-left:32px;color:var(--ink-2)}
+.pill{display:inline-block;font:600 11px var(--body);padding:2px 8px;border-radius:999px}
+.pill.Loss{background:var(--bad-bg);color:var(--bad)}.pill.Low{background:var(--warn-bg);color:var(--warn)}.pill.Healthy{background:var(--good-bg);color:var(--good)}
+.bar-cell{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.bar-cell span.b{height:8px;border-radius:2px;background:var(--s1);display:inline-block}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--tile);font-size:12px;padding:6px 9px;border-radius:5px;z-index:10;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+#tip b{font-weight:600}
+footer{font-size:12px;color:var(--ink-3)}
+.mark:hover{opacity:.82}
+</style>
+
+<div class="shell">
+  <header>
+    <div>
+      <h1>AdventureWorks Sales Intelligence</h1>
+      <p>Sales, profitability, ML customer segments and revenue forecast · Jul 2017 – Jun 2020 · fiscal year ends 30 June</p>
+    </div>
+    <div class="src">121,253 order lines · data to <span id="lastDate"></span><br>Built by Wissem Cherif</div>
+  </header>
+
+  <nav role="tablist" aria-label="Report pages">
+    <button role="tab" id="tab-overview" data-page="overview" aria-selected="true">Executive overview</button>
+    <button role="tab" id="tab-profit" data-page="profit" aria-selected="false">Profitability</button>
+    <button role="tab" id="tab-segments" data-page="segments" aria-selected="false">Customer segments<span class="ml">ML</span></button>
+    <button role="tab" id="tab-forecast" data-page="forecast" aria-selected="false">Revenue forecast<span class="ml">ML</span></button>
+  </nav>
+
+  <div class="slicers" id="slicers">
+    <div class="slicer"><span>Fiscal year</span><div class="seg" id="fySlicer"></div></div>
+    <div class="slicer"><span>Channel</span><div class="seg" id="chSlicer"></div></div>
+    <span class="note-filter" id="filterNote"></span>
+  </div>
+
+  <!-- PAGE 1 -->
+  <section class="page" id="page-overview">
+    <div class="kpis" id="kpis"></div>
+    <div class="tile span8"><h2>Monthly revenue</h2><div class="sub" id="trendSub"></div><div id="trend"></div><div class="legend" id="trendLegend"></div></div>
+    <div class="tile span4"><h2>Revenue by channel</h2><div id="donut"></div><div class="legend" id="donutLegend"></div></div>
+    <div class="tile span6"><h2>Revenue and margin by category</h2><div id="catBars"></div></div>
+    <div class="tile span6"><h2>Revenue by country</h2><div id="countryBars"></div></div>
+  </section>
+
+  <!-- PAGE 2 -->
+  <section class="page" id="page-profit" hidden>
+    <div class="tile span12"><div class="callout" id="profitCallout"></div></div>
+    <div class="tile span7"><h2>Profitability matrix</h2><div class="sub">Channel › category › subcategory. Margin status: Loss &lt; 0%, Low &lt; 10%, Healthy ≥ 10%</div><div class="tbl-wrap" id="matrix"></div></div>
+    <div class="tile span5"><h2>Margin vs revenue by subcategory</h2><div class="sub">Bubble size = units sold. Below the line = loss-making</div><div id="bubble"></div></div>
+    <div class="tile span12"><h2>Top 10 products by revenue</h2><div class="tbl-wrap" id="topProducts"></div></div>
+  </section>
+
+  <!-- PAGE 3 -->
+  <section class="page" id="page-segments" hidden>
+    <div class="tile span12"><div class="callout info"><b>How the segments are built:</b> for each of the 18,484 Internet customers, recency (days since last order), frequency (orders) and monetary value (revenue) are log-scaled and clustered with K-Means (k = 4). Segments describe all Internet history; the slicers filter the revenue-by-year chart only.</div></div>
+    <div class="kpis" id="segKpis"></div>
+    <div class="tile span6"><h2>Share of customers vs share of revenue</h2><div id="segShare"></div><div class="legend"><span><i style="background:var(--s1-soft)"></i>% of customers</span><span><i style="background:var(--s1)"></i>% of revenue</span></div></div>
+    <div class="tile span6"><h2>Recency vs customer value</h2><div class="sub">Sample of 1,400 customers · revenue on log scale</div><div id="segScatter"></div><div class="legend" id="segLegend"></div></div>
+    <div class="tile span7"><h2>Segment profiles and recommended actions</h2><div class="tbl-wrap" id="segTable"></div></div>
+    <div class="tile span5"><h2>Internet revenue by segment and fiscal year</h2><div id="segFy"></div><div class="legend" id="segFyLegend"></div></div>
+  </section>
+
+  <!-- PAGE 4 -->
+  <section class="page" id="page-forecast" hidden>
+    <div class="kpis" id="fcKpis"></div>
+    <div class="tile span12"><h2>Monthly revenue: actual, backtest and forecast</h2><div class="sub">Ridge regression on linear trend + month-of-year effects, trained on complete months. Shaded band = 80% prediction interval.</div><div id="fcChart"></div><div class="legend"><span><i style="background:var(--s1)"></i>Actual</span><span><i style="background:var(--ink-3)"></i>Backtest Jan–May 2020</span><span><i style="background:var(--s2)"></i>Forecast Jun–Dec 2020</span><span><i style="background:var(--s2);opacity:.25"></i>80% interval</span></div></div>
+    <div class="tile span6"><h2>Backtest: forecast vs actual</h2><div class="tbl-wrap" id="btTable"></div></div>
+    <div class="tile span6"><h2>Forecast by month</h2><div class="tbl-wrap" id="fcTable"></div></div>
+  </section>
+
+  <footer>Source: Microsoft AdventureWorks Sales sample. Data preparation and ML in Python (Pandas, Scikit-learn); the same model feeds the Power BI version of this report.</footer>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmtM = v => '$' + (v / 1e6).toFixed(Math.abs(v) >= 1e7 ? 1 : 2) + 'M';
+const fmtK = v => '$' + (v / 1e3).toFixed(0) + 'K';
+const fmtMoney = v => Math.abs(v) >= 1e6 ? fmtM(v) : Math.abs(v) >= 1e3 ? fmtK(v) : '$' + Math.round(v);
+const pct = (v, d = 1) => (v * 100).toFixed(d) + '%';
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const rows = (arr, cols) => arr.map(r => Object.fromEntries(cols.map((c, i) => [c, r[i]])));
+const cube = rows(DATA.cube, DATA.cubeCols), orders = rows(DATA.orders, DATA.ordersCols), sub = rows(DATA.sub, DATA.subCols);
+const fcRows = rows(DATA.forecast, DATA.forecastCols);
+$('#lastDate').textContent = DATA.lastDate;
+
+const state = { fy: 'All', ch: 'All', page: 'overview' };
+const monthLabel = mk => { const y = Math.floor(mk / 100), m = mk % 100; return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m - 1] + ' ' + String(y).slice(2); };
+
+/* ---------- tooltip ---------- */
+const tip = $('#tip');
+document.addEventListener('mousemove', e => { if (!tip.hidden) { tip.style.left = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; } });
+document.addEventListener('mouseover', e => { const t = e.target.closest('[data-tip]'); if (t) { tip.innerHTML = t.dataset.tip; tip.hidden = false; } });
+document.addEventListener('mouseout', e => { if (e.target.closest('[data-tip]')) tip.hidden = true; });
+
+/* ---------- chart helpers (plain SVG) ---------- */
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; }
+
+function lineChart(el, { labels, series, band, height = 240, yFmt = fmtM, xEvery = 3 }) {
+  const W = Math.max(420, Math.round(el.clientWidth || 760)), H = height, L = 52, R = 12, T = 12, B = 26;
+  const all = series.flatMap(s => s.values.filter(v => v != null)).concat(band ? band.hi.filter(v => v != null) : []);
+  const max = niceMax(Math.max(...all) * 1.05);
+  const x = i => L + (W - L - R) * (labels.length === 1 ? 0.5 : i / (labels.length - 1));
+  const y = v => T + (H - T - B) * (1 - v / max);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (let k = 0; k <= 4; k++) { const v = max * k / 4; s += `<line class="gridl" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${yFmt(v)}</text>`; }
+  const step = Math.max(xEvery, Math.ceil(labels.length * 52 / (W - L - R)));
+  labels.forEach((lb, i) => { if (i % step === 0) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${lb}</text>`; });
+  if (band) {
+    const idx = band.hi.map((v, i) => v != null ? i : -1).filter(i => i >= 0);
+    const pts = idx.map(i => `${x(i)},${y(band.hi[i])}`).concat(idx.slice().reverse().map(i => `${x(i)},${y(band.lo[i])}`));
+    s += `<polygon points="${pts.join(' ')}" fill="${band.color}" opacity=".18"/>`;
+  }
+  series.forEach(se => {
+    let d = '', pen = false;
+    se.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i) + ',' + y(v); pen = true; });
+    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="${se.width || 2}" ${se.dash ? 'stroke-dasharray="5 4"' : ''} stroke-linejoin="round"/>`;
+  });
+  // hover columns
+  labels.forEach((lb, i) => {
+    const parts = series.filter(se => se.values[i] != null).map(se => `${se.name}: <b>${yFmt(se.values[i])}</b>`);
+    if (band && band.hi[i] != null) parts.push(`80% interval: ${yFmt(band.lo[i])} – ${yFmt(band.hi[i])}`);
+    if (!parts.length) return;
+    const w = (W - L - R) / Math.max(labels.length - 1, 1);
+    s += `<rect x="${x(i) - w / 2}" y="${T}" width="${w}" height="${H - T - B}" fill="transparent" data-tip="<b>${lb}</b><br>${parts.join('<br>')}"/>`;
+    series.forEach(se => { if (se.values[i] != null && se.dots) s += `<circle cx="${x(i)}" cy="${y(se.values[i])}" r="3" fill="${se.color}"/>`; });
+  });
+  el.innerHTML = s + '</svg>';
+}
+
+function hBars(el, items, { fmt = fmtM, max, label = 130, extra, color } = {}) {
+  const W = 520, rh = 30, H = items.length * rh + 4, R = 70;
+  const mx = max || niceMax(Math.max(...items.map(d => d.v)));
+  const x = v => label + (W - label - R) * Math.max(v, 0) / mx;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  items.forEach((d, i) => {
+    const y0 = i * rh + 4;
+    s += `<text x="${label - 8}" y="${y0 + 15}" text-anchor="end">${esc(d.k)}</text>
+      <rect class="mark" x="${label}" y="${y0 + 4}" width="${Math.max(2, x(d.v) - label)}" height="16" rx="3" fill="${d.color || color || 'var(--s1)'}" data-tip="<b>${esc(d.k)}</b><br>${d.tip || fmt(d.v)}"/>
+      <text class="val" x="${x(d.v) + 6}" y="${y0 + 16}">${fmt(d.v)}${extra ? ' ' + extra(d) : ''}</text>`;
+  });
+  el.innerHTML = s + '</svg>';
+}
+
+function donut(el, items, total) {
+  const W = 260, H = 200, cx = 130, cy = 100, r = 80, ir = 52;
+  let a0 = -Math.PI / 2, s = `<svg viewBox="0 0 ${W} ${H}" role="img" style="max-width:300px;margin:0 auto">`;
+  items.forEach(d => {
+    const a1 = a0 + 2 * Math.PI * d.v / total, large = a1 - a0 > Math.PI ? 1 : 0;
+    const p = (a, rr) => `${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`;
+    if (d.v / total > 0.9999) s += `<circle cx="${cx}" cy="${cy}" r="${(r + ir) / 2}" fill="none" stroke="${d.color}" stroke-width="${r - ir}" data-tip="<b>${d.k}</b><br>${fmtM(d.v)} · 100%"/>`;
+    else s += `<path class="mark" d="M${p(a0, r)} A${r},${r} 0 ${large} 1 ${p(a1, r)} L${p(a1, ir)} A${ir},${ir} 0 ${large} 0 ${p(a0, ir)} Z" fill="${d.color}" stroke="var(--tile)" stroke-width="2" data-tip="<b>${d.k}</b><br>${fmtM(d.v)} · ${pct(d.v / total)}"/>`;
+    a0 = a1;
+  });
+  s += `<text x="${cx}" y="${cy - 2}" text-anchor="middle" class="val" style="font-size:18px;font-family:var(--display)">${fmtM(total)}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle">total revenue</text>`;
+  el.innerHTML = s + '</svg>';
+}
+
+/* ---------- filters ---------- */
+function buildSlicers() {
+  const fy = $('#fySlicer'), ch = $('#chSlicer');
+  fy.innerHTML = ['All', ...DATA.fys].map(v => `<button type="button" id="fy-${v}" data-v="${v}" aria-pressed="${state.fy === v}">${v === 'All' ? 'All' : v}</button>`).join('');
+  ch.innerHTML = ['All', 'Internet', 'Reseller'].map(v => `<button type="button" id="ch-${v}" data-v="${v}" aria-pressed="${state.ch === v}">${v}</button>`).join('');
+  fy.onclick = e => { const b = e.target.closest('button'); if (b) { state.fy = b.dataset.v; render(); } };
+  ch.onclick = e => { const b = e.target.closest('button'); if (b) { state.ch = b.dataset.v; render(); } };
+}
+const inCh = r => state.ch === 'All' || r.Channel === state.ch;
+const inFy = r => state.fy === 'All' || r.FY === state.fy;
+const sum = (arr, k) => arr.reduce((a, r) => a + r[k], 0);
+const prevFy = fy => 'FY' + (parseInt(fy.slice(2)) - 1);
+
+/* ---------- page 1 ---------- */
+function renderOverview() {
+  const sel = cube.filter(r => inCh(r) && inFy(r));
+  const rev = sum(sel, 'r'), prof = sum(sel, 'pr');
+  const ord = sum(orders.filter(r => inCh(r) && inFy(r)), 'o');
+  let yoy = null;
+  if (state.fy !== 'All' && DATA.fys.includes(prevFy(state.fy))) {
+    const py = sum(cube.filter(r => inCh(r) && r.FY === prevFy(state.fy)), 'r'); yoy = (rev - py) / py;
+  }
+  const k = (l, v, d) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d || '&nbsp;'}</div></div>`;
+  $('#kpis').innerHTML =
+    k('Revenue', fmtM(rev), state.fy === 'All' ? '3 fiscal years' : state.fy) +
+    k('Profit', fmtM(prof), 'after product cost') +
+    k('Margin', pct(prof / rev), prof / rev < 0.1 ? '<span class="down">below 10% target</span>' : '<span class="up">healthy</span>') +
+    k('Orders', ord.toLocaleString('en-US'), 'avg order ' + fmtMoney(rev / ord)) +
+    k('Revenue YoY', yoy == null ? '—' : (yoy > 0 ? '+' : '') + pct(yoy), yoy == null ? 'pick FY2019 or FY2020' : 'vs ' + prevFy(state.fy) + (state.fy === 'FY2020' ? ' (FY2020 to 15 Jun)' : ''));
+
+  // monthly trend: by channel
+  const months = [...new Set(cube.filter(inFy).map(r => r.MonthKey))].filter(m => m < 202006).sort();
+  const byM = ch => months.map(m => { return sum(cube.filter(r => r.MonthKey === m && (ch === 'All' || r.Channel === ch)), 'r'); });
+  const series = state.ch === 'All'
+    ? [{ name: 'Total', values: byM('All'), color: css('--s1'), width: 2.5 }, { name: 'Reseller', values: byM('Reseller'), color: css('--s1-soft'), width: 1.5 }, { name: 'Internet', values: byM('Internet'), color: css('--s2'), width: 1.5 }]
+    : [{ name: state.ch, values: byM(state.ch), color: css(state.ch === 'Internet' ? '--s2' : '--s1'), width: 2.5 }];
+  lineChart($('#trend'), { labels: months.map(monthLabel), series, xEvery: months.length > 14 ? 3 : 1 });
+  $('#trendSub').textContent = 'Reseller orders arrive in peaks; Internet sales grow steadily. June 2020 (partial month) not shown.';
+  $('#trendLegend').innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('');
+
+  const chItems = ['Reseller', 'Internet'].map(ch => ({ k: ch, v: sum(cube.filter(r => r.Channel === ch && inFy(r) && inCh(r)), 'r'), color: css(ch === 'Internet' ? '--s2' : '--s1') })).filter(d => d.v > 0);
+  donut($('#donut'), chItems, chItems.reduce((a, d) => a + d.v, 0));
+  $('#donutLegend').innerHTML = chItems.map(d => {
+    const p = sum(cube.filter(r => r.Channel === d.k && inFy(r)), 'pr');
+    return `<span><i style="background:${d.color}"></i>${d.k} · margin ${pct(p / d.v)}</span>`;
+  }).join('');
+
+  const cats = ['Bikes', 'Components', 'Clothing', 'Accessories'].map(c => { const s = sel.filter(r => r.Category === c); const r = sum(s, 'r'), p = sum(s, 'pr'); return { k: c, v: r, m: r ? p / r : 0 }; }).filter(d => d.v > 0);
+  hBars($('#catBars'), cats, { label: 100, extra: d => `· ${pct(d.m)} margin`, max: niceMax(Math.max(...cats.map(d => d.v)) * 1.25) });
+  const ctry = {}; sel.forEach(r => ctry[r.Country] = (ctry[r.Country] || 0) + r.r);
+  const ci = Object.entries(ctry).map(([k, v]) => ({ k, v, tip: `${fmtM(v)} · ${pct(v / rev)} of revenue` })).sort((a, b) => b.v - a.v);
+  hBars($('#countryBars'), ci, { label: 110, extra: d => `· ${pct(d.v / rev, 0)}` , max: niceMax(ci[0].v * 1.2)});
+}
+
+/* ---------- page 2 ---------- */
+const status = m => m < 0 ? 'Loss' : m < 0.1 ? 'Low' : 'Healthy';
+function renderProfit() {
+  const s = sub.filter(r => inCh(r) && inFy(r));
+  const rb = sub.filter(r => r.Channel === 'Reseller' && r.Category === 'Bikes' && inFy(r));
+  const rbR = sum(rb, 'r'), rbP = sum(rb, 'pr');
+  $('#profitCallout').innerHTML = `<b>Reseller bike sales ${rbP < 0 ? 'lose money' : 'barely break even'}:</b> ${fmtM(rbR)} of revenue at a ${pct(rbP / rbR)} margin${state.fy === 'All' ? ' over three years' : ' in ' + state.fy}. The same bikes sold online earn about 40%. Reseller pricing and discounts are the first lever to review.`;
+
+  // matrix
+  let h = '<table><thead><tr><th>Channel / category / subcategory</th><th>Revenue</th><th>Profit</th><th>Margin</th><th>Status</th></tr></thead><tbody>';
+  const line = (cls, name, r, p) => `<tr class="${cls}"><td>${esc(name)}</td><td>${fmtMoney(r)}</td><td class="${p < 0 ? 'down' : ''}">${fmtMoney(p)}</td><td>${pct(p / r)}</td><td><span class="pill ${status(p / r)}">${status(p / r)}</span></td></tr>`;
+  ['Reseller', 'Internet'].filter(ch => state.ch === 'All' || state.ch === ch).forEach(ch => {
+    const cs = s.filter(r => r.Channel === ch); if (!cs.length) return;
+    h += line('grp', ch, sum(cs, 'r'), sum(cs, 'pr'));
+    ['Bikes', 'Components', 'Clothing', 'Accessories'].forEach(cat => {
+      const ks = cs.filter(r => r.Category === cat); if (!ks.length) return;
+      h += line('cat', cat, sum(ks, 'r'), sum(ks, 'pr'));
+      const subs = {}; ks.forEach(r => { subs[r.Subcategory] = subs[r.Subcategory] || { r: 0, p: 0 }; subs[r.Subcategory].r += r.r; subs[r.Subcategory].p += r.pr; });
+      Object.entries(subs).sort((a, b) => b[1].r - a[1].r).slice(0, cat === 'Bikes' ? 3 : 2).forEach(([n, v]) => h += line('sc', n, v.r, v.p));
+    });
+  });
+  $('#matrix').innerHTML = h + '</tbody></table>';
+
+  // bubble: subcategories (combined over selected channels)
+  const agg = {}; s.forEach(r => { const k = r.Subcategory; agg[k] = agg[k] || { r: 0, p: 0, q: 0, c: r.Category }; agg[k].r += r.r; agg[k].p += r.pr; agg[k].q += r.q; });
+  const pts = Object.entries(agg).map(([k, v]) => ({ k, r: v.r, m: v.p / v.r, q: v.q, c: v.c })).filter(d => d.r > 50000);
+  const W = 520, H = 300, L = 46, R = 16, T = 12, B = 30;
+  const lx = v => Math.log10(v), xmin = 4.5, xmax = Math.ceil(lx(Math.max(...pts.map(d => d.r))) * 2) / 2;
+  const ymin = Math.min(-0.1, Math.floor(Math.min(...pts.map(d => d.m)) * 10) / 10), ymax = Math.max(0.7, Math.ceil(Math.max(...pts.map(d => d.m)) * 10) / 10);
+  const X = v => L + (W - L - R) * (lx(v) - xmin) / (xmax - xmin), Y = m => T + (H - T - B) * (1 - (m - ymin) / (ymax - ymin));
+  const qmax = Math.max(...pts.map(d => d.q));
+  const col = { Bikes: css('--s1'), Components: css('--s3'), Clothing: css('--s4'), Accessories: css('--s2') };
+  let g = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (let m = ymin; m <= ymax + 1e-9; m += 0.1) g += `<line class="gridl" x1="${L}" x2="${W - R}" y1="${Y(m)}" y2="${Y(m)}"/><text x="${L - 6}" y="${Y(m) + 4}" text-anchor="end">${Math.round(m * 100)}%</text>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--bad)" stroke-dasharray="4 3"/>`;
+  for (let e = Math.ceil(xmin); e <= xmax; e++) g += `<text x="${X(10 ** e)}" y="${H - 8}" text-anchor="middle">${fmtMoney(10 ** e)}</text>`;
+  pts.sort((a, b) => b.q - a.q).forEach(d => g += `<circle class="mark" cx="${X(d.r)}" cy="${Y(d.m)}" r="${5 + 16 * Math.sqrt(d.q / qmax)}" fill="${col[d.c]}" fill-opacity=".7" stroke="var(--tile)" data-tip="<b>${esc(d.k)}</b> (${d.c})<br>Revenue ${fmtMoney(d.r)}<br>Margin ${pct(d.m)}<br>Units ${d.q.toLocaleString('en-US')}"/>`);
+  pts.filter(d => d.r > 5e6 || d.m < 0).forEach(d => g += `<text x="${X(d.r)}" y="${Y(d.m) - 10 - 16 * Math.sqrt(d.q / qmax)}" text-anchor="middle" class="val" style="font-size:10.5px">${esc(d.k)}</text>`);
+  $('#bubble').innerHTML = g + `<text x="${W - R}" y="${T + 10}" text-anchor="end">revenue (log scale) →</text></svg><div class="legend">${Object.entries(col).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join('')}</div>`;
+
+  // top products
+  const tp = DATA.top[state.fy + '|' + state.ch] || [];
+  const mx = tp.length ? tp[0][1] : 1;
+  $('#topProducts').innerHTML = '<table><thead><tr><th>#</th><th style="text-align:left">Product</th><th>Revenue</th><th>Profit</th><th>Margin</th><th>Status</th></tr></thead><tbody>' +
+    tp.map(([n, r, p], i) => `<tr><td>${i + 1}</td><td style="text-align:left">${esc(n)}</td><td><div class="bar-cell"><span class="b" style="width:${Math.round(80 * r / mx)}px"></span>${fmtMoney(r)}</div></td><td class="${p < 0 ? 'down' : ''}">${fmtMoney(p)}</td><td>${pct(p / r)}</td><td><span class="pill ${status(p / r)}">${status(p / r)}</span></td></tr>`).join('') + '</tbody></table>';
+}
+
+/* ---------- page 3 ---------- */
+const SEG_ORDER = ['Champions', 'Lapsed Big Spenders', 'New Customers', 'Low-Value Occasional'];
+const SEG_COL = () => ({ 'Champions': css('--s1'), 'Lapsed Big Spenders': css('--s2'), 'New Customers': css('--s3'), 'Low-Value Occasional': css('--s4') });
+const ACTIONS = { 'Champions': 'Loyalty programme, early access to new bikes', 'Lapsed Big Spenders': 'Win-back campaign: last order ~9 months ago', 'New Customers': 'Onboarding emails, cross-sell accessories', 'Low-Value Occasional': 'Low-cost automated emails only' };
+function renderSegments() {
+  const segs = SEG_ORDER.map(n => DATA.segments.find(s => s.Segment === n));
+  const total = segs.reduce((a, s) => a + s.Customers, 0);
+  const champ = segs[0];
+  const k = (l, v, d) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`;
+  $('#segKpis').innerHTML = k('Internet customers', total.toLocaleString('en-US'), 'clustered into 4 segments') +
+    k('Champions', pct(champ.CustomerShare, 0), 'of customers') + k('Champions revenue', pct(champ.RevenueShare, 0), 'of Internet revenue') +
+    k('Champion avg value', fmtMoney(champ.AvgRevenue), champ.AvgOrders.toFixed(1) + ' orders each') +
+    k('Win-back pool', fmtM(segs[1].TotalRevenue), segs[1].Customers.toLocaleString('en-US') + ' lapsed big spenders');
+
+  // grouped share bars
+  const W = 520, rh = 52, H = segs.length * rh + 6, Lb = 150, R = 50, mx = 0.8;
+  const x = v => Lb + (W - Lb - R) * v / mx;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  segs.forEach((d, i) => {
+    const y0 = i * rh + 6;
+    s += `<text x="${Lb - 8}" y="${y0 + 22}" text-anchor="end" class="val">${d.Segment}</text>
+      <rect class="mark" x="${Lb}" y="${y0}" width="${x(d.CustomerShare) - Lb}" height="16" rx="3" fill="var(--s1-soft)" data-tip="<b>${d.Segment}</b><br>${d.Customers.toLocaleString('en-US')} customers · ${pct(d.CustomerShare)}"/>
+      <text x="${x(d.CustomerShare) + 5}" y="${y0 + 12}">${pct(d.CustomerShare, 0)}</text>
+      <rect class="mark" x="${Lb}" y="${y0 + 19}" width="${Math.max(2, x(d.RevenueShare) - Lb)}" height="16" rx="3" fill="var(--s1)" data-tip="<b>${d.Segment}</b><br>${fmtM(d.TotalRevenue)} · ${pct(d.RevenueShare)} of revenue"/>
+      <text class="val" x="${x(d.RevenueShare) + 5}" y="${y0 + 31}">${pct(d.RevenueShare, 0)}</text>`;
+  });
+  $('#segShare').innerHTML = s + '</svg>';
+
+  // scatter recency vs monetary (log)
+  const cols = SEG_COL(), Ws = 520, Hs = 280, L = 52, Rr = 12, T = 10, B = 30;
+  const X = r => L + (Ws - L - Rr) * r / 1100, Y = m => T + (Hs - T - B) * (1 - (Math.log10(Math.max(m, 1)) - 0) / 4.3);
+  let g = `<svg viewBox="0 0 ${Ws} ${Hs}" role="img">`;
+  [1, 10, 100, 1000, 10000].forEach(v => g += `<line class="gridl" x1="${L}" x2="${Ws - Rr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${fmtMoney(v)}</text>`);
+  [0, 250, 500, 750, 1000].forEach(v => g += `<text x="${X(v)}" y="${Hs - 8}" text-anchor="middle">${v}d</text>`);
+  DATA.scatter.forEach(([sg, r, m]) => g += `<circle cx="${X(r)}" cy="${Y(m)}" r="2.6" fill="${cols[sg]}" fill-opacity=".55" data-tip="<b>${sg}</b><br>${r} days since last order<br>${fmtMoney(m)} lifetime revenue"/>`);
+  $('#segScatter').innerHTML = g + `<text x="${Ws - Rr}" y="${T + 10}" text-anchor="end">days since last order →</text></svg>`;
+  $('#segLegend').innerHTML = SEG_ORDER.map(n => `<span><i style="background:${cols[n]}"></i>${n}</span>`).join('');
+
+  $('#segTable').innerHTML = '<table><thead><tr><th>Segment</th><th>Customers</th><th>Avg orders</th><th>Avg revenue</th><th>Days since order</th><th style="text-align:left">Action</th></tr></thead><tbody>' +
+    segs.map(d => `<tr><td><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${cols[d.Segment]};margin-right:6px"></i>${d.Segment}</td><td>${d.Customers.toLocaleString('en-US')}</td><td>${d.AvgOrders.toFixed(1)}</td><td>${fmtMoney(d.AvgRevenue)}</td><td>${Math.round(d.AvgRecencyDays)}</td><td style="text-align:left;white-space:normal;min-width:180px">${ACTIONS[d.Segment]}</td></tr>`).join('') + '</tbody></table>';
+
+  // stacked bars by FY
+  const fys = DATA.fys.filter(f => state.fy === 'All' || f === state.fy);
+  const vals = fys.map(fy => SEG_ORDER.map(n => { const r = DATA.segFy.find(z => z[0] === fy && z[1] === n); return r ? r[2] : 0; }));
+  const tot = vals.map(v => v.reduce((a, b) => a + b, 0));
+  const Wb = 420, Hb = 240, Lx = 50, Bt = 26, Tt = 14, mxb = niceMax(Math.max(...tot) * 1.08);
+  const bw = Math.min(80, (Wb - Lx) / fys.length * 0.55);
+  const Yb = v => Tt + (Hb - Tt - Bt) * (1 - v / mxb);
+  let sb = `<svg viewBox="0 0 ${Wb} ${Hb}" role="img">`;
+  for (let k2 = 0; k2 <= 4; k2++) { const v = mxb * k2 / 4; sb += `<line class="gridl" x1="${Lx}" x2="${Wb}" y1="${Yb(v)}" y2="${Yb(v)}"/><text x="${Lx - 6}" y="${Yb(v) + 4}" text-anchor="end">${fmtM(v)}</text>`; }
+  fys.forEach((fy, i) => {
+    const cx = Lx + (Wb - Lx) * (i + 0.5) / fys.length; let acc = 0;
+    SEG_ORDER.forEach((n, j) => { const v = vals[i][j]; if (!v) return; sb += `<rect class="mark" x="${cx - bw / 2}" y="${Yb(acc + v)}" width="${bw}" height="${Math.max(0, Yb(acc) - Yb(acc + v) - 1.5)}" fill="${cols[n]}" data-tip="<b>${fy} · ${n}</b><br>${fmtM(v)} · ${pct(v / tot[i])}"/>`; acc += v; });
+    sb += `<text class="val" x="${cx}" y="${Yb(acc) - 5}" text-anchor="middle">${fmtM(acc)}</text><text x="${cx}" y="${Hb - 8}" text-anchor="middle">${fy}</text>`;
+  });
+  $('#segFy').innerHTML = sb + '</svg>';
+  $('#segFyLegend').innerHTML = SEG_ORDER.map(n => `<span><i style="background:${cols[n]}"></i>${n}</span>`).join('');
+}
+
+/* ---------- page 4 ---------- */
+function renderForecast() {
+  const months = [...new Set(fcRows.map(r => r.Month))].sort();
+  const get = (m, type, k) => { const r = fcRows.find(z => z.Month === m && z.Type === type); return r && r[k] !== '' ? +r[k] : null; };
+  const actual = months.map(m => get(m, 'Actual', 'Actual'));
+  const bt = months.map(m => get(m, 'Backtest', 'Forecast'));
+  const fc = months.map(m => get(m, 'Forecast', 'Forecast'));
+  const lo = months.map(m => get(m, 'Forecast', 'Lower80')), hi = months.map(m => get(m, 'Forecast', 'Upper80'));
+  const lastA = actual.map((v, i) => v != null ? i : -1).filter(i => i >= 0).pop();
+  const fcJoined = fc.map((v, i) => i === lastA ? actual[i] : v);
+  const labels = months.map(m => { const d = new Date(m + 'T00:00'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()] + ' ' + String(d.getFullYear()).slice(2); });
+  lineChart($('#fcChart'), { labels, height: 280, xEvery: 3,
+    series: [{ name: 'Actual', values: actual, color: css('--s1'), width: 2.5 }, { name: 'Backtest', values: bt, color: css('--ink-3'), dash: true, width: 1.8, dots: true }, { name: 'Forecast', values: fcJoined, color: css('--s2'), width: 2.5, dots: true }],
+    band: { lo, hi, color: css('--s2') } });
+  const fcTotal = fc.reduce((a, v) => a + (v || 0), 0);
+  const lastYear = months.filter(m => m >= '2019-06-01' && m <= '2019-12-01').reduce((a, m) => a + (get(m, 'Actual', 'Actual') || 0), 0);
+  const k = (l, v, d) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`;
+  $('#fcKpis').innerHTML = k('Forecast Jun–Dec 2020', fmtM(fcTotal), 'sum of 7 monthly forecasts') +
+    k('vs same months 2019', '+' + pct(fcTotal / lastYear - 1, 0), fmtM(lastYear) + ' in Jun–Dec 2019') +
+    k('Backtest error (MAPE)', DATA.mape.toFixed(1) + '%', 'Jan–May 2020, unseen months') +
+    k('Baseline error', DATA.naiveMape.toFixed(1) + '%', 'same month last year') +
+    (() => { const mxv = Math.max(...fc.filter(v => v != null)); return k('Peak month', labels[fc.indexOf(mxv)].replace(' ', ' 20'), fmtM(mxv)); })();
+  const btRows = months.filter((m, i) => bt[i] != null).map(m => { const i = months.indexOf(m); return [labels[i], actual[i], bt[i]]; });
+  $('#btTable').innerHTML = '<table><thead><tr><th>Month</th><th>Actual</th><th>Forecast</th><th>Error</th></tr></thead><tbody>' +
+    btRows.map(([l, a, f]) => `<tr><td>${l}</td><td>${fmtM(a)}</td><td>${fmtM(f)}</td><td class="${Math.abs(f - a) / a > 0.15 ? 'down' : ''}">${(f > a ? '+' : '') + pct((f - a) / a)}</td></tr>`).join('') + '</tbody></table>';
+  $('#fcTable').innerHTML = '<table><thead><tr><th>Month</th><th>Forecast</th><th>Low (10%)</th><th>High (90%)</th></tr></thead><tbody>' +
+    months.map((m, i) => fc[i] == null ? '' : `<tr><td>${labels[i]}</td><td><b>${fmtM(fc[i])}</b></td><td>${fmtM(lo[i])}</td><td>${fmtM(hi[i])}</td></tr>`).join('') + '</tbody></table>';
+}
+
+/* ---------- routing ---------- */
+const PAGES = { overview: renderOverview, profit: renderProfit, segments: renderSegments, forecast: renderForecast };
+function render() {
+  buildSlicers();
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.page === state.page));
+  Object.keys(PAGES).forEach(p => $('#page-' + p).hidden = p !== state.page);
+  $('#slicers').hidden = state.page === 'forecast';
+  $('#filterNote').textContent = state.page === 'segments' ? 'Segments use Internet customers only' : '';
+  PAGES[state.page]();
+}
+document.querySelector('nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.page = b.dataset.page; try { localStorage.setItem('awPage', state.page); } catch (_) {} render(); } });
+const h = location.hash.replace('#', '');
+if (PAGES[h]) state.page = h; else { try { const s = localStorage.getItem('awPage'); if (PAGES[s]) state.page = s; } catch (_) {} }
+render();
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 200); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+</script>
